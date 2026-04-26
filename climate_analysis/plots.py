@@ -2,17 +2,25 @@
 
 from __future__ import annotations
 
+from io import BytesIO
+
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import seaborn as sns
+from IPython.display import Image, display
 
 from .config import ACCENT5, BORDER, CARD_BG, DARK_BG, PALETTE, TEXT_PRI, TEXT_SEC
 
 
 def _render_plot(fig: plt.Figure) -> None:
-    """Show plots interactively and quietly close them in headless runs."""
+    """Render plots in notebooks and preserve outputs for headless notebook execution."""
     if "agg" in plt.get_backend().lower():
+        buffer = BytesIO()
+        fig.savefig(buffer, format="png", bbox_inches="tight", facecolor=fig.get_facecolor(), dpi=160)
+        buffer.seek(0)
+        display(Image(data=buffer.getvalue()))
+        buffer.close()
         plt.close(fig)
         return
     plt.show()
