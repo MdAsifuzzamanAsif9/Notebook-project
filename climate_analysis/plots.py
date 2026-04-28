@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from io import BytesIO
+from matplotlib.colors import to_rgb
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -326,5 +327,180 @@ def plot_risk_tier_profiles(summary: pd.DataFrame) -> None:
     ax.set_title("Average Exposure by Climate Risk Tier", fontsize=13, fontweight="bold", color=TEXT_PRI, pad=12)
     ax.legend(facecolor=CARD_BG, edgecolor=BORDER, labelcolor=TEXT_PRI, fontsize=9)
     ax.yaxis.grid(True, linestyle="--", alpha=0.25)
+    plt.tight_layout()
+    _render_plot(fig)
+
+
+def plot_region_share_donut(region_counts: pd.Series) -> None:
+    fig, ax = plt.subplots(figsize=(8, 8))
+    fig.patch.set_facecolor(DARK_BG)
+    ax.set_facecolor(CARD_BG)
+    colors = PALETTE[: len(region_counts)]
+    wedges, texts, autotexts = ax.pie(
+        region_counts.values,
+        labels=region_counts.index,
+        colors=colors,
+        startangle=90,
+        autopct="%1.1f%%",
+        pctdistance=0.78,
+        wedgeprops={"width": 0.42, "edgecolor": DARK_BG, "linewidth": 1.2},
+        textprops={"color": TEXT_PRI, "fontsize": 10},
+    )
+    for autotext, color in zip(autotexts, colors):
+        red, green, blue = to_rgb(color)
+        luminance = 0.2126 * red + 0.7152 * green + 0.0722 * blue
+        autotext.set_color("#0f172a" if luminance > 0.7 else TEXT_PRI)
+        autotext.set_fontsize(10)
+        autotext.set_weight("bold")
+    ax.text(0, 0.05, "Region\nShare", ha="center", va="center", color=TEXT_PRI, fontsize=18, fontweight="bold")
+    ax.text(0, -0.18, f"{int(region_counts.sum()):,} records", ha="center", va="center", color=TEXT_SEC, fontsize=10)
+    ax.set_title("Regional Share of Records", fontsize=13, fontweight="bold", color=TEXT_PRI, pad=16)
+    plt.tight_layout()
+    _render_plot(fig)
+
+
+def plot_flood_risk_pie(flood_counts: pd.Series) -> None:
+    fig, ax = plt.subplots(figsize=(8, 6))
+    fig.patch.set_facecolor(DARK_BG)
+    ax.set_facecolor(CARD_BG)
+    risk_colors = {"Low": "#38bdf8", "Medium": "#f59e0b", "High": "#ef4444"}
+    colors = [risk_colors.get(label, PALETTE[index % len(PALETTE)]) for index, label in enumerate(flood_counts.index)]
+    _, _, autotexts = ax.pie(
+        flood_counts.values,
+        labels=flood_counts.index,
+        colors=colors,
+        startangle=120,
+        autopct="%1.1f%%",
+        explode=[0.02] * len(flood_counts),
+        shadow=False,
+        textprops={"color": TEXT_PRI, "fontsize": 11},
+    )
+    for autotext in autotexts:
+        autotext.set_color(TEXT_PRI)
+        autotext.set_fontsize(10)
+        autotext.set_weight("bold")
+    ax.set_title("Flood Risk Composition", fontsize=13, fontweight="bold", color=TEXT_PRI, pad=14)
+    plt.tight_layout()
+    _render_plot(fig)
+
+
+def plot_region_hazard_stack(risk_by_region: pd.DataFrame) -> None:
+    fig, ax = plt.subplots(figsize=(11, 6))
+    fig.patch.set_facecolor(DARK_BG)
+    ax.set_facecolor(CARD_BG)
+    bottom = np.zeros(len(risk_by_region))
+    risk_colors = {"Low": "#38bdf8", "Medium": "#f59e0b", "High": "#ef4444"}
+    for label in risk_by_region.columns:
+        values = risk_by_region[label].values
+        ax.bar(
+            risk_by_region.index,
+            values,
+            bottom=bottom,
+            label=label,
+            color=risk_colors.get(label, PALETTE[0]),
+            edgecolor=DARK_BG,
+        )
+        bottom += values
+    ax.set_ylabel("Share of Regional Records", fontsize=12)
+    ax.set_title("Flood Risk Mix by Region", fontsize=13, fontweight="bold", color=TEXT_PRI, pad=12)
+    ax.yaxis.grid(True, linestyle="--", alpha=0.25)
+    ax.legend(facecolor=CARD_BG, edgecolor=BORDER, labelcolor=TEXT_PRI, fontsize=9, title="Flood Risk", title_fontsize=9)
+    ax.set_ylim(0, 1)
+    ax.set_yticks(np.linspace(0, 1, 6))
+    ax.set_yticklabels([f"{int(value * 100)}%" for value in np.linspace(0, 1, 6)])
+    plt.xticks(rotation=20, ha="right")
+    plt.tight_layout()
+    _render_plot(fig)
+
+
+def plot_regional_summary_radar(summary: pd.DataFrame) -> None:
+    categories = [column.replace("_", " ").title() for column in summary.columns]
+    values = summary.astype(float)
+    scaled = (values - values.min()) / (values.max() - values.min())
+    scaled = scaled.fillna(0)
+
+    angles = np.linspace(0, 2 * np.pi, len(categories), endpoint=False).tolist()
+    angles += angles[:1]
+
+    fig, ax = plt.subplots(figsize=(10, 8), subplot_kw={"polar": True})
+    fig.patch.set_facecolor(DARK_BG)
+    ax.set_facecolor(CARD_BG)
+
+    for index, (region, row) in enumerate(scaled.iterrows()):
+        series = row.tolist()
+        series += series[:1]
+        color = PALETTE[index % len(PALETTE)]
+        ax.plot(angles, series, linewidth=2.2, color=color, label=region)
+        ax.fill(angles, series, color=color, alpha=0.08)
+
+    ax.set_xticks(angles[:-1])
+    ax.set_xticklabels(categories, color=TEXT_PRI, fontsize=10)
+    ax.set_yticks([0.2, 0.4, 0.6, 0.8, 1.0])
+    ax.set_yticklabels(["20%", "40%", "60%", "80%", "100%"], color=TEXT_SEC, fontsize=9)
+    ax.set_ylim(0, 1)
+    ax.grid(color=BORDER, linestyle="--", alpha=0.5)
+    ax.spines["polar"].set_color(BORDER)
+    ax.set_title(
+        "Regional Summary Profile (Normalized)",
+        fontsize=13,
+        fontweight="bold",
+        color=TEXT_PRI,
+        pad=22,
+    )
+    ax.legend(
+        loc="upper center",
+        bbox_to_anchor=(0.5, -0.08),
+        ncol=3,
+        facecolor=CARD_BG,
+        edgecolor=BORDER,
+        labelcolor=TEXT_PRI,
+        fontsize=9,
+    )
+    plt.tight_layout()
+    _render_plot(fig)
+
+
+def plot_dataset_overview_profile(df: pd.DataFrame) -> None:
+    counts = pd.Series(
+        {
+            "Numeric Columns": len(df.select_dtypes(include=np.number).columns),
+            "Categorical Columns": len(df.select_dtypes(exclude=np.number).columns),
+            "Regions": df["region"].nunique(),
+            "Countries": df["country"].nunique(),
+        }
+    )
+    fig, ax = plt.subplots(figsize=(10, 5.5))
+    fig.patch.set_facecolor(DARK_BG)
+    ax.set_facecolor(CARD_BG)
+    bars = ax.bar(counts.index, counts.values, color=PALETTE[: len(counts)], edgecolor=DARK_BG, width=0.62)
+    ax.set_title("Dataset Structure Profile", fontsize=13, fontweight="bold", color=TEXT_PRI, pad=12)
+    ax.set_ylabel("Count", fontsize=12)
+    ax.yaxis.grid(True, linestyle="--", alpha=0.25)
+    plt.xticks(rotation=15, ha="right")
+    for bar, value in zip(bars, counts.values):
+        ax.text(bar.get_x() + bar.get_width() / 2, value + max(counts.values) * 0.02, f"{int(value)}", ha="center", va="bottom", color=TEXT_PRI, fontsize=10, fontweight="bold")
+    plt.tight_layout()
+    _render_plot(fig)
+
+
+def plot_descriptive_statistics_mean_bars(df: pd.DataFrame, columns: list[str]) -> None:
+    means = df[columns].mean().sort_values(ascending=False)
+
+    fig, ax = plt.subplots(figsize=(11, 6.5))
+    fig.patch.set_facecolor(DARK_BG)
+    ax.set_facecolor(CARD_BG)
+    bars = ax.barh(
+        [metric.replace("_", " ").title() for metric in means.index],
+        means.values,
+        color=[PALETTE[index % len(PALETTE)] for index in range(len(means))],
+        edgecolor=DARK_BG,
+        height=0.62,
+    )
+    ax.set_title("Average Level of Key Climate Variables", fontsize=13, fontweight="bold", color=TEXT_PRI, pad=12)
+    ax.set_xlabel("Mean Value", fontsize=12)
+    ax.xaxis.grid(True, linestyle="--", alpha=0.25)
+    ax.invert_yaxis()
+    for bar, value in zip(bars, means.values):
+        ax.text(value, bar.get_y() + bar.get_height() / 2, f"  {value:.2f}", va="center", color=TEXT_PRI, fontsize=10)
     plt.tight_layout()
     _render_plot(fig)
