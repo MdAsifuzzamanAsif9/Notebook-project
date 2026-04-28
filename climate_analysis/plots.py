@@ -73,7 +73,10 @@ def plot_distributions(df: pd.DataFrame, columns: list[str]) -> None:
             edgecolor=DARK_BG,
             alpha=0.85,
         )
-        ax.set_title(column.replace("_", " ").title(), color=TEXT_PRI, fontsize=11)
+        label = column.replace("_", " ").title()
+        ax.set_title(label, color=TEXT_PRI, fontsize=11)
+        ax.set_xlabel(label, color=TEXT_PRI, fontsize=10)
+        ax.set_ylabel("Frequency", color=TEXT_PRI, fontsize=10)
     plt.tight_layout()
     _render_plot(fig)
 

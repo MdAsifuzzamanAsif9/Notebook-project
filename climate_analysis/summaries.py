@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import numpy as np
 import pandas as pd
 
 
@@ -62,6 +63,35 @@ def duplicate_count(df: pd.DataFrame) -> int:
 
 def descriptive_statistics(df: pd.DataFrame) -> pd.DataFrame:
     return df.describe().round(2)
+
+
+def distribution_summary_statistics(df: pd.DataFrame, columns: list[str]) -> pd.DataFrame:
+    return (
+        df[columns]
+        .agg(["mean", "median", "std", "min", "max"])
+        .T
+        .round(2)
+        .reset_index()
+        .rename(columns={"index": "variable"})
+    )
+
+
+def distribution_frequency_summary(df: pd.DataFrame, columns: list[str], bins: int = 40) -> pd.DataFrame:
+    rows: list[dict[str, int | str]] = []
+    for column in columns:
+        series = df[column].dropna()
+        counts, edges = np.histogram(series, bins=bins)
+        peak_idx = int(counts.argmax())
+        rows.append(
+            {
+                "variable": column,
+                "observations": int(series.shape[0]),
+                "bins_used": bins,
+                "peak_bin_range": f"{edges[peak_idx]:.2f} to {edges[peak_idx + 1]:.2f}",
+                "peak_frequency": int(counts[peak_idx]),
+            }
+        )
+    return pd.DataFrame(rows)
 
 
 def correlation_matrix(df: pd.DataFrame) -> pd.DataFrame:
