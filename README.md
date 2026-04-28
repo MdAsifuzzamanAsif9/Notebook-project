@@ -76,6 +76,10 @@ The notebook and analysis pipeline were executed successfully after the final pr
 - charts render cleanly
 - statistical tests execute as expected
 
+## Author
+
+- Author: MdAsifuzzamanAsif9
+
 ## License
 
 This project is released under the MIT License. See [LICENSE](./LICENSE).
