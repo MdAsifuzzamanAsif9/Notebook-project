@@ -33,18 +33,21 @@ def plot_correlation_heatmap(correlation: pd.DataFrame) -> None:
     ax.set_facecolor(CARD_BG)
     mask = np.triu(np.ones_like(correlation, dtype=bool))
     cmap = sns.diverging_palette(220, 20, as_cmap=True)
+    visible_values = correlation.mask(mask)
+    max_abs = visible_values.abs().stack().max()
+    color_limit = max(0.05, float(max_abs))
     sns.heatmap(
         correlation,
         mask=mask,
         cmap=cmap,
-        vmax=1,
-        vmin=-1,
+        vmax=color_limit,
+        vmin=-color_limit,
         center=0,
         annot=True,
         fmt=".2f",
         linewidths=0.5,
         linecolor=BORDER,
-        annot_kws={"size": 8, "color": TEXT_PRI},
+        annot_kws={"size": 8, "color": "black"},
         cbar_kws={"shrink": 0.8},
         ax=ax,
     )
